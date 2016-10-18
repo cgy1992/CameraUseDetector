@@ -7,6 +7,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    //Set up the icon menu items
     close = new QAction(tr("&Quit"), this);
     scanForCameras = new QAction("Scan for Cameras",this);
     showCameraStatus = new QAction("Show Camera Status",this);
@@ -14,22 +15,23 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(scanForCameras, SIGNAL(triggered()), this, SLOT(scan()));
     connect(showCameraStatus,SIGNAL(triggered()),this, SLOT(showCameras()));
 
+    //Create the Icon Menu
     trayIconMenu = new QMenu(this);
     trayIconMenu->addAction(showCameraStatus);
     trayIconMenu->addAction(scanForCameras);
     trayIconMenu->addSeparator();
     trayIconMenu->addAction(close);
 
+    //Create the Icon
     m_sys_tray_icon = new QSystemTrayIcon(this);
     m_icon = QIcon("C:/Users/User/Documents/QTProjects/CameraUseDetector/camera-alt-128.png");
     m_sys_tray_icon->setIcon(m_icon);
     m_sys_tray_icon->setContextMenu(trayIconMenu);
 
-   // connect(m_sys_tray_icon, SIGNAL(activated(QSystemTrayIcon::ActivationReason reason)), this, SLOT(showCameras()));
-
+    //Show the icon in the system tray
     m_sys_tray_icon->show();
 
-    m_cameraInUse = false;
+    //Perfom an initial scan of connected cameras then start a timer
     scan();
     if(m_timer)
     {
@@ -48,59 +50,51 @@ MainWindow::~MainWindow()
 
 void MainWindow::onTimeout()
 {
-    //QList<QCameraInfo> cameras = QCameraInfo::availableCameras();
-    //const QCameraInfo &ci = cameras.at(0);
+    //Loop through all discovered cameras
     for (QCameraInfo &ci : all_cameras)
     {
         QCamera *camera = new QCamera(ci, this);
         camera->load();
-        camera->start();
-        //qDebug() << camera->error();
-        //qDebug() << camera->status();
-        //qDebug() << camera->availability();
-        if(camera->status() != QCamera::ActiveStatus) {
-            if (!all_camera_status[ci.deviceName()])
+        camera->start();//If the camera is already in use by another application then this will throw an error signal
+        if(camera->status() != QCamera::ActiveStatus) { //This camera is in use by another application
+            if (!all_camera_status[ci.deviceName()]) //This is the first cycle camera use has been detected
             {
                 m_sys_tray_icon->showMessage("Warning",ci.description() + " In Use",QSystemTrayIcon::Warning);
             }
             all_camera_status[ci.deviceName()] = true;
         }
-        else {
+        else {// We were able to connect thereby proving no other applications are using the camera
             if(all_camera_status[ci.deviceName()]) m_sys_tray_icon->showMessage("Update", ci.description() + " no longer in use.");
             all_camera_status[ci.deviceName()] = false;
         }
-        camera->stop();
+        camera->stop();//disconnect from the camera
         delete camera;
     }
 }
 
 void MainWindow::scan()
 {
-    qDebug() << "Scanning...";
     all_cameras = QCameraInfo::availableCameras();
     for(QCameraInfo camera : all_cameras)
     {
-        qDebug() << camera.description();
         all_camera_status.insert(camera.deviceName(),false);
     }
 }
 
 void MainWindow::showCameras()
 {
-    qDebug() << "showing Cameras";
     QString message = "";
     for(QCameraInfo camera : all_cameras)
     {
         message += camera.description() + ": ";
         if(all_camera_status[camera.deviceName()])
         {
-            message += "In Use";
+            message += "In Use\n";
         }
         else
         {
-            message += "Not in Use";
+            message += "Not in Use\n";
         }
-        message += "\n";
     }
     m_sys_tray_icon->showMessage("Status of Available Cameras",message);
 }

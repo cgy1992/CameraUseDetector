@@ -19,16 +19,12 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
-
-
-
 private:
     Ui::MainWindow *ui;
     QIcon m_icon;
     QTimer *m_timer = nullptr;
     QSystemTrayIcon *m_sys_tray_icon = nullptr;
     QMenu *trayIconMenu;
-    bool m_cameraInUse;
     QAction *close;
     QAction *scanForCameras;
     QAction *showCameraStatus;
